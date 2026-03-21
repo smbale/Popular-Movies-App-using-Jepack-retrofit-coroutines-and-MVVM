@@ -20,7 +20,7 @@
         </activity>
         <meta-data
             android:name="com.infinity.movieapp.API_KEY"
-            android:value="AIzaSyCNNOZvnqtxsZli052uDanqLfpPsIQkhl8" />
+            android:value="AIXXXXXXXXXXXXXXX" />
     </application>
 
 </manifest>
