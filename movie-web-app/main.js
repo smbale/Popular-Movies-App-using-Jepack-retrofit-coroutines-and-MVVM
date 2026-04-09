@@ -12,6 +12,25 @@ async function fetchMovies(type) {
     }
 }
 
+async function searchMovies(query) {
+    try {
+        const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        return data.results;
+    } catch (error) {
+        console.error('Error searching movies:', error);
+        return [];
+    }
+}
+
+window.playTrailer = function(key) {
+    const container = document.getElementById('trailerContainer');
+    if (container) {
+        container.innerHTML = `<iframe width="100%" height="315" src="https://www.youtube.com/embed/${key}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="border-radius: 10px; margin-top: 1rem;"></iframe>`;
+        container.style.display = 'block';
+    }
+};
+
 function createMovieCard(movie) {
     const card = document.createElement('div');
     card.className = 'movie-card';
@@ -61,7 +80,15 @@ async function showMovieDetails(id) {
                                 <p>${movie.runtime} min</p>
                             </div>
                         </div>
-                        <button class="btn btn-primary">Watch Trailer</button>
+                        ${(() => {
+                            const trailer = movie.videos && movie.videos.results ? movie.videos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube') : null;
+                            if (trailer) {
+                                return `<button class="btn btn-primary" onclick="playTrailer('${trailer.key}')">Watch Trailer</button>`;
+                            } else {
+                                return `<button class="btn btn-secondary" disabled>No Trailer</button>`;
+                            }
+                        })()}
+                        <div id="trailerContainer" style="display: none;"></div>
                     </div>
                 </div>
             </div>
@@ -97,13 +124,70 @@ async function init() {
     // Close modal
     document.querySelector('.close-btn').onclick = () => {
         document.getElementById('movieModal').style.display = 'none';
+        const trailerContainer = document.getElementById('trailerContainer');
+        if (trailerContainer) {
+            trailerContainer.innerHTML = ''; // Stop video playback when closing
+        }
     };
 
     window.onclick = (event) => {
         const modal = document.getElementById('movieModal');
         if (event.target == modal) {
             modal.style.display = 'none';
+            const trailerContainer = document.getElementById('trailerContainer');
+            if (trailerContainer) {
+                trailerContainer.innerHTML = ''; // Stop video playback when closing
+            }
         }
+    };
+    
+    // Search Functionality
+    const searchBtn = document.getElementById('searchBtn');
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const searchResultsSection = document.getElementById('searchResultsSection');
+    const heroSection = document.getElementById('hero');
+    const otherSections = document.querySelectorAll('.movie-section:not(#searchResultsSection)');
+    const searchResultsDiv = document.getElementById('searchResults');
+
+    const performSearch = async () => {
+        const query = searchInput.value.trim();
+        if (!query) return;
+
+        heroSection.style.display = 'none';
+        otherSections.forEach(sec => sec.style.display = 'none');
+        searchResultsSection.style.display = 'block';
+        
+        searchResultsDiv.innerHTML = '<p>Loading...</p>';
+        
+        const results = await searchMovies(query);
+        searchResultsDiv.innerHTML = '';
+        
+        if (results.length === 0) {
+            searchResultsDiv.innerHTML = '<p>No movies found.</p>';
+        } else {
+            results.forEach(movie => {
+                if (movie.poster_path) {
+                    searchResultsDiv.appendChild(createMovieCard(movie));
+                }
+            });
+        }
+    };
+
+    searchBtn.onclick = performSearch;
+
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+
+    clearSearchBtn.onclick = (e) => {
+        e.preventDefault();
+        searchInput.value = '';
+        searchResultsSection.style.display = 'none';
+        heroSection.style.display = 'flex';
+        otherSections.forEach(sec => sec.style.display = 'block');
     };
 }
 
